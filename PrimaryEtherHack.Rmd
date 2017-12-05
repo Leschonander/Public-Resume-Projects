@@ -1,0 +1,144 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+requestURL <- "https://api.twitter.com/oauth/request_token"
+accessURL <- "https://api.twitter.com/oauth/access_token"
+authURL <- "https://api.twitter.com/oauth/authorize"
+#
+library(ROAuth)
+library(twitteR)
+
+api_key <-"KMeXlplWxx8px6DDb21tCxB8a"
+api_secret <- "MUg2ntYWqnjFoVgHqvZ2O9fzzKjPYblT9HcGnNXm2PKTrl2ttI"
+access_token<-"828366980805754880-LaxZN6SRJSChsyLThs8hoxOh8XeBE1O"
+access_secret <- "a5feJTBW4WKkWBDGN39R3Pvt9uiBVU7amdU5wbqgdMbhG"
+
+setup_twitter_oauth(api_key,api_secret,access_token,access_secret)
+
+#searchTwitter("iphone")
+ethereum<- searchTwitter("Ethereum" ,n=250,lang = "en")
+```
+
+#Above Code uses TwittiR to call the most recent tweets relating to the hastag Ethereum 
+#This is used in the next two parts
+
+```{r}
+ether<- searchTwitter("ethereum", n=3000, lang= "en")
+                       
+ether_text <- sapply(ether, function(x) x$getText())
+ether_text_corpus <- Corpus(VectorSource(ether_text))
+
+ether_text_corpus <- tm_map(ether_text_corpus, removePunctuation)
+ether_text_corpus <- tm_map(ether_text_corpus, content_transformer(tolower))
+ether_text_corpus <- tm_map(ether_text_corpus, function(x)removeWords(x,stopwords()))
+
+removeURL <- function(x) gsub("http[[:alnum:]]*", "", x)
+ether_text_corpus <- tm_map(ether_text_corpus, content_transformer(removeURL))
+
+ether_2 <- TermDocumentMatrix(ether_text_corpus)
+ether_2 <- as.matrix(ether_2)
+ether_2 <- sort(rowSums(ether_2),decreasing=TRUE)
+
+head(ether_2, 10)
+
+set.seed(1234)
+
+wordcloud(ether_text_corpus, max.words = 100, random.order = FALSE)#GLORIUS WORD CLOUD
+write.csv(ether_2, file = "Most Common Eth Tweet Words.csv") #Extract the Tweet data
+```
+#Has several different functions. Uses several different packages to get text from 3,000 different tweets related to Ethereum. Then I can use these tweets to look at the most common words in each tweet and create a wordcloud. 
+```{r}
+setwd("C:/Users/Schonanderl/Downloads/twitter-sentiment-analysis-tutorial-201107-master/twitter-sentiment-analysis-tutorial-201107-master/data/opinion-lexicon-English")
+neg = scan("negative-words.txt", what="character", comment.char=";")
+pos = scan("positive-words.txt", what="character", comment.char=";")
+#
+score.sentiment = function(tweets, pos.words, neg.words)
+  
+{
+  
+  require(plyr)
+  require(stringr)
+  
+  scores = laply(tweets, function(tweet, pos.words, neg.words) {
+    
+    
+    
+    tweet = gsub('https://','',tweet) # removes https://
+    tweet = gsub('http://','',tweet) # removes http://
+    tweet=gsub('[^[:graph:]]', ' ',tweet) ## removes graphic characters 
+    #like emoticons 
+    tweet = gsub('[[:punct:]]', '', tweet) # removes punctuation 
+    tweet = gsub('[[:cntrl:]]', '', tweet) # removes control characters
+    tweet = gsub('\\d+', '', tweet) # removes numbers
+    tweet=str_replace_all(tweet,"[^[:graph:]]", " ") 
+    
+    tweet = tolower(tweet) # makes all letters lowercase
+    
+    word.list = str_split(tweet, '\\s+') # splits the tweets by word in a list
+    
+    words = unlist(word.list) # turns the list into vector
+    
+    pos.matches = match(words, pos.words) ## returns matching 
+    #values for words from list 
+    neg.matches = match(words, neg.words)
+    
+    pos.matches = !is.na(pos.matches) ## converts matching values to true of false
+    neg.matches = !is.na(neg.matches)
+    
+    score = sum(pos.matches) - sum(neg.matches) # true and false are 
+    #treated as 1 and 0 so they can be added
+    
+    return(score)
+    
+  }, pos.words, neg.words )
+  
+  scores.df = data.frame(score=scores, text=tweets)
+  
+  return(scores.df)
+  
+}
+
+tweets = searchTwitter('Ethereum',n=10000)
+Tweets.text = laply(tweets,function(t)t$getText()) # gets text from Tweets
+
+analysis = score.sentiment(Tweets.text, pos, neg) # calls sentiment function
+hist(analysis$score)#Shows sentiment scores of tweets
+summary(analysis$score) #Looks at the Min, 1stQ,Median, Mean 3rdQ and Max
+
+hist(analysis$score,col = "black", main = "Score of Tweets",ylab = "Amount of Tweets")
+count(analysis$score)#Shows the specific number for each analysis 
+write.csv(analysis, file = "AnAbsurdAmountofEth.csv") #Extract the Tweet data 
+```
+#Runs a code to create a function to use a set of positive and negative words to preform a sentinment analysis. Then uses 10,000 different Ethereum tweets to preform this analysis. Can create chart to show score, can use other functions to look at other details of the 10,000 tweets. 
+#For example as we will detail below...
+```{r}
+summary(analysis$score) #Looks at the Min, 1stQ,Median, Mean 3rdQ and Max
+```
+#Shows the min, 1stQ, Median, Mean, 3rdQ, and Max
+```{r}
+ggplot(data = analysis) + 
+  geom_bar(mapping = aes(x = score)) +
+  theme_economist() +
+
+```
+#Uses ggplot to create bargraph
+
+O
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+#Used. Then just pluged variance for the formula for SD. 
+```{r}
+var(analysis)
+```
+#To get Variance
+
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
