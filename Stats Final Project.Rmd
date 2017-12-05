@@ -64,14 +64,6 @@ summary(hlg.aov)
 ```
 
 ```{r}
-# Compute the analysis of variance
-hlg.aov <- aov(cgpa ~ gs, data = Copy_of_Research_Project_Responses_Form_Responses_1)
-# Summary of the analysis
-summary(hlg.aov)
-```
-
-
-```{r}
 (filter(Copy_of_Research_Project_Responses_Form_Responses_1, cgpa == 3.5 | cgpa == 3.75))
 
 
