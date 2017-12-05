@@ -73,11 +73,3 @@ summary(hlg.aov)
 table(Copy_of_Research_Project_Responses_Form_Responses_1$gs)
 ```
 
-```{r}
-subset(Copy_of_Research_Project_Responses_Form_Responses_1, cgpa > 3.5, select = c(gs))
-subset(Copy_of_Research_Project_Responses_Form_Responses_1, Day == 1, select = -Temp)
-subset(Copy_of_Research_Project_Responses_Form_Responses_1, select = Ozone:Wind)
-
-with(airquality, subset(Ozone, Temp > 80))
-```
-
