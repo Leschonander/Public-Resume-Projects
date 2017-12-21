@@ -1,0 +1,95 @@
+---
+title: "BROCKHAMPTON Data Exploration"
+author: "Lars E. Schonander"
+date: "December 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+brock <- read.csv("C:/Users/Schonanderl/Documents/BROCKHAMPTON.csv")
+
+library(ggplot2)
+library(plotly)
+library(ggrepel)
+library(corrplot)
+
+
+ 
+
+
+```
+
+```{r}
+ggplot(brock, aes(x = track_popularity)) +
+  geom_histogram(binwidth = 2.5 , colour="black", fill= "#ffb6c1") +
+  geom_vline(aes(xintercept=mean(track_popularity)),
+             colour="black", linetype="dashed", size=1) +
+  geom_vline(aes(xintercept=median(track_popularity)),
+             colour="#025D8C", linetype="dashed", size=1) +
+  theme_bw() +
+  ylab("Amount of Tracks") +
+  xlab("Track Popularity") +
+  theme(axis.text.x=element_text(size=10),                            
+        axis.text.y=element_text(size=10),
+        axis.title.x=element_text(size=12, face="plain"),             
+        axis.title.y=element_text(size=12, face="plain")) +
+  scale_x_continuous(limits = c(0,70), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0,10.5), expand = c(0, 0))
+
+```
+
+```{r}
+brock_numname <-  data.frame(brock$speechiness, brock$acousticness, brock$instrumentalness, brock$liveness, brock$valence, brock$tempo, brock$duration_ms, brock$danceability, brock$album_name)
+brock_num <-  data.frame(brock$speechiness, brock$acousticness, brock$instrumentalness, brock$liveness, brock$valence, brock$tempo, brock$duration_ms, brock$danceability)
+brockcor <- cor(brock_num)
+corrplot(brockcor, method = "number")
+```
+
+```{r}
+brocksmooth <- ggplot(brock, aes(duration_ms, acousticness, label = track_name)) +
+  geom_smooth(fill = "grey", colour = "#025D8C") +
+  xlab("Duration") +
+  ylab("Acousticness") +
+  ggtitle("Point Chart showing duration vs acousticness") +
+  geom_text_repel() +
+  geom_point(color = '#ffb6c1') +
+  theme_bw() 
+
+brocksmooth
+```
+
+
+```{r}
+brockbox <- ggplot(brock, aes(x = album_name,y = track_popularity, label = track_name)) +
+  geom_boxplot(outlier.color = "#ffb6c1") +
+  xlab("Album Name") +
+  ylab("Track Popularity") +
+  ggtitle("Box Plot of track popularity per album") +
+  theme_bw() +
+  scale_y_continuous(limits = c(0,70), expand = c(0, 0))
+
+ggplotly(brockbox)
+
+```
+
+
+```{r}
+brocksmooth <- ggplot(brock, aes(duration_ms, acousticness, label = track_name)) +
+  geom_smooth(fill = "grey", colour = "#025D8C") +
+  xlab("Duration") +
+  ylab("Acousticness") +
+  ggtitle("Point Chart showing duration vs acousticness") +
+  geom_text_repel() +
+  geom_point(color = '#ffb6c1') +
+  theme_bw()
+
+ggplotly(brocksmooth)
+
+```
+
+
