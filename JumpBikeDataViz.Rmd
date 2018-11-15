@@ -1,0 +1,69 @@
+---
+title: "Jump Bike D.C Data Exploration"
+output: html_notebook
+---
+
+A R Markdown notebook to showcase a small data viz of a few days worth of Jump Bike D.C data that I have been collecting. 
+
+First, opening the SQLite database, which I orginally created in Python. But opening it is not much of a problem. Also learned how SQLite works in R now, so that is nice. 
+
+```{r}
+library(RSQLite)
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+library(emoGG)
+library(leaflet)
+```
+
+
+```{r}
+con = dbConnect(SQLite(), dbname="jumpBikeTime.db")
+```
+
+```{r}
+query <- dbSendQuery(con, "SELECT * FROM timeseries")
+data <- dbFetch(query, n = -1)
+```
+
+And opening the data below. Have aggergated the average charge, display amount of bikes, average latitude and longitude, along with time. 
+
+```{r}
+data
+```
+```{r}
+x <- data$time
+y <- data$bikeAmount
+d <- data.frame(x, y)
+```
+
+```{r}
+ggplot(d, aes(x,y, group = 1)) + geom_line() + theme(
+  axis.text.x = element_text(face="bold", color="#333333", size=7.5, angle=35),
+  axis.text.y = element_text(face="bold", color="#333333", size=14),
+  panel.background = (element_rect(fill ='white'))) + ggtitle("Change in amount of Jump Bikes on the street") +
+  labs(x = 'Time', y='Bike Amount') + geom_emoji(emoji='1f6b2')
+ 
+
+```
+
+```{r}
+lat= data$latitudeAverage
+long = data$longitudeAverage
+time = data$time
+dLoc = data.frame(lat, long, time)
+
+str = paste("Time = (",dLoc$time,")", "Location = (", dLoc$lat, "/", dLoc$long, ")")
+
+map = leaflet(data = dLoc) %>% addProviderTiles(providers$OpenStreetMap) %>%
+  addMarkers(~long, ~lat, popup=(str))  %>%
+  addMeasure(
+    position = "bottomleft",
+    primaryLengthUnit = "meters",
+    primaryAreaUnit = "sqmeters",
+    activeColor = "#3D535D",
+    completedColor = "#fb5957")
+
+
+map
+```
