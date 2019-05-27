@@ -1,0 +1,135 @@
+```{r}
+library(lubridate)
+library(tidyverse)
+library(rvest)
+```
+
+```{r}
+save_chart <- function(name, graphic){
+  ggsave(gsub(" ", '', paste(getwd(), "/", name ,".svg")), graphic)
+}
+```
+
+```{r}
+read_html("https://www.businessinsider.com/2019-media-layoffs-job-cuts-at-buzzfeed-huffpost-vice-details-2019-2#gannett-400-jobs-january-23-13") %>%
+  html_nodes("h2") %>%
+  html_text() -> losses
+```
+
+```{r}
+(jobs <- as.tibble(losses[2:17]))
+```
+
+```{r}
+(jobs %>%
+  separate(
+        value,
+        into = c("Company","rest"),
+        sep = ':'
+    ) %>%
+  separate(
+      rest,
+      into = c("Losses", "date"),
+      sep = ','
+  ) -> jobs)
+```
+
+# Parsing the exceptions... 
+
+```{r}
+jobs[[2]][[4]] <- 9
+```
+```{r}
+jobs[[3]][[4]] <- "March 13"
+```
+```{r}
+jobs[[3]][[11]] <- "January 30"
+```
+
+# Generalized data cleaning
+
+```{r}
+jobs$Losses <- gsub("[^0-9]", "", jobs$Losses) 
+```
+
+```{r}
+jobs <- add_row(jobs,
+                Company = c("New Orleans Times-Picayune", "	GateHouse Media"), 
+                Losses = c(161, 60),
+                date = c("May 3", "May 23")
+                )
+```
+
+
+```{r}
+jobs$date <- stringr::str_trim(jobs$date, side = "left")
+```
+
+```{r}
+jobs %>% 
+  separate(
+        date,
+        into = c("Month","Day"),
+        sep = ' '
+    ) -> jobs
+```
+
+```{r}
+jobs$Month <- stringr::str_trim(jobs$Month)
+```
+
+```{r}
+jobs$Losses <- as.numeric(jobs$Losses)
+```
+
+```{r}
+jobs
+```
+
+```{r}
+jobs[[2]][13] <- 60
+```
+```{r}
+jobs[[3]][13] <- "January"
+```
+```{r}
+jobs[[4]][13] <- 30
+```
+
+```{r}
+jobs[[1]][18] <- "GateHouse Media"
+```
+
+
+```{r}
+jobs %>% 
+  group_by(Month) %>%
+  summarise(
+    Loss_per_month = sum(Losses)
+  ) 
+```
+
+```{r}
+per_month <- tibble(
+  month = c("January", "Febuary", "March", "April" , "May"),
+  loss = c(1710, 559, 119, 25,382)
+)
+```
+
+```{r}
+per_month$month <- factor(per_month$month, levels = per_month$month)
+
+(per_month %>%
+  ggplot(aes(month, loss, group = 1)) + geom_col(fill = "#ef1c26") + theme_my_axios() + labs(
+    x = "Month",
+    y = "Losses",
+    title = "Journalism Job Losses",
+    subtitle = "Data: Business Insider"
+  ) -> chart )
+```
+
+```{r}
+# ggsave("C:\\Users\\Schonanderl\\Documents\\MediaFileArticles\\chart.svg", chart)
+ggsave(gsub(" ", '', paste(getwd(), "/Jobchart.svg")), chart)
+```
+
