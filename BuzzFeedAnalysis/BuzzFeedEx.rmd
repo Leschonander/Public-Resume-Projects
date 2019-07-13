@@ -1,0 +1,147 @@
+```{r}
+library(tidyverse)
+library(tidytext)
+library(RcppRoll)
+library(lubridate)
+library(quanteda)
+```
+
+```{r}
+BuzzFeedNews <- jsonlite::fromJSON("https://www.buzzfeed.com/api/v2/feeds/news")
+```
+
+```{r}
+BigStories <- BuzzFeedNews$big_stories
+```
+
+```{r}
+regularStories <- BuzzFeedNews$buzzes
+```
+
+```{r}
+get_buzzfeed_stories <- function(paging){
+  url <- paste("https://www.buzzfeed.com/api/v2/feeds/news?p=", paging, sep = '')
+  data <- jsonlite::fromJSON(url)
+  stories <- data$buzzes
+  stories %>%
+    select(
+      title,
+      category,
+      published_date,
+      bylines
+    ) -> stories
+  stories
+}
+```
+
+
+```{r}
+# Testing the queries...
+(1:100 %>%
+  map(., get_buzzfeed_stories) %>%
+  compact() %>%
+  reduce(bind_rows) %>%
+  unnest(bylines) %>%
+  select(title, category, published_date, display_name) -> twoFiveHun_stories)
+#reduce(full_join, by = "metavertical")
+# one$title
+```
+
+```{r}
+twoFiveHun_stories %>%
+  mutate(
+    date = as_date(published_date),
+    year = year(date),
+    month = month(date),
+    day = day(date),
+    hour = hour(published_date)
+  ) -> twoFiveHun_stories
+```
+
+```{r}
+twoFiveHun_stories %>%
+  rowid_to_column(., "ID") %>%
+  filter(ID != 1) -> twoFiveHun_stories
+```
+
+```{r}
+twoFiveHun_stories %>%
+  group_by(date) %>%
+  count() %>%
+  ggplot(aes(date, n)) + geom_line() + theme_my_axios()
+```
+
+
+
+
+
+```{r}
+twoFiveHun_stories %>%
+  group_by(date) %>%
+  count() %>%
+  lm(n ~ date, .) %>%
+  summary()
+  
+```
+
+```{r}
+twoFiveHun_stories %>%
+  group_by(category) %>%
+  count() %>%
+  arrange(-n)
+```
+
+```{r}
+twoFiveHun_stories %>%
+  group_by(date) %>%
+  count() %>%
+  ggplot(aes(date, n)) + geom_point() + geom_smooth(method = 'lm') + theme_my_axios()
+  
+```
+
+
+```{r}
+(twoFiveHun_stories %>%
+ mutate(
+    syllables = nsyllable(title),
+    sentences = nsentence(title),
+    words = ntoken(title, remove_punct = TRUE),
+    fk_grade = 0.39*(words/sentences) + 11.8*(syllables/words) - 15.59) -> twoFiveHun_stories_scores)
+```
+
+```{r}
+twoFiveHun_stories_scores %>%
+  group_by(category) %>%
+  summarise(median = median(fk_grade)) %>%
+  arrange(-median)
+```
+
+```{r}
+twoFiveHun_stories_scores %>%
+  subset(category %in% c("USNews", "World", "Tech", "Science", "Politics")) %>%
+  group_by(category) %>%
+  summarise(median = median(fk_grade)) %>%
+  arrange(-median)
+```
+
+
+```{r}
+twoFiveHun_stories_scores %>%
+  subset(category %in% c("USNews", "World", "Tech", "Science", "Politics")) %>%
+  ggplot(aes(category, fk_grade, fill = category)) + geom_violin() + theme_my_axios() + 
+  scale_fill_manual(values = c("USNews" = "#0095A8", "World" = "#112E51", "Tech" = "#FF7043", "Science" = "#78909C", "Politics" = "#f63449")) +
+  labs(
+    x = "Category",
+    y = "Flesch-Kincaid Score",
+    title = "BuzzFeed Flesch-Kincaid Scores by Top Five Vertical",
+    subtitle = "Source: BuzzFeed",
+    caption = "@LarsESchonander"
+  ) + theme(legend.position="none")
+```
+
+```{r}
+twoFiveHun_stories_scores %>%
+  group_by(hour, fk_grade) %>%
+  count() %>%
+  ggplot(aes(hour, fk_grade, group = 1)) + geom_line()
+```

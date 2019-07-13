@@ -1,0 +1,141 @@
+```{r}
+library(tidyverse)
+library(tidytext)
+library(lubridate)
+library(quanteda)
+library(RSQLite)
+```
+
+```{r}
+con = dbConnect(SQLite(), dbname="BuzzFeedDB.db")
+
+query <- dbSendQuery(con, "SELECT * FROM BuzzFeed_data")
+df <- dbFetch(query, n = -1)
+```
+
+```{r}
+head(df, 10)
+```
+
+
+```{r}
+tail(df, 10)
+```
+
+```{r}
+df[48000:49000,]
+```
+
+
+```{r}
+(df %>%
+ mutate(
+    syllables = nsyllable(title),
+    sentences = nsentence(title),
+    words = ntoken(title, remove_punct = TRUE),
+    fk_grade = 0.39*(words/sentences) + 11.8*(syllables/words) - 15.59,
+    fk_reading_ease = 206.835 - 1.015 * (words / sentences) - 84.6 * (syllables / words)) -> df_scores)
+```
+
+```{r}
+df_scores %>%
+  summary()
+```
+
+```{r}
+unique(df$category)
+```
+
+```{r}
+df_scores %>%
+  mutate(
+    date = as_date(published_date),
+    year = year(date),
+    month = month(date),
+    day = day(date),
+    hour = hour(published_date)
+  ) -> df_scores
+```
+
+```{r}
+df_scores %>%
+  drop_na() %>%
+  group_by(year) %>%
+  summarise(median_grade = median(fk_grade)) %>%
+  arrange(-median_grade)
+```
+
+```{r}
+df_scores %>%
+  drop_na() %>%
+  group_by(year) %>%
+  summarise(median_grade = median(fk_grade)) %>%
+  ggplot(aes(year, median_grade)) + geom_line(color = "#ee3322") + theme_my_axios() + labs(
+    x = "Year",
+    y = "Flesch-Kincaid Grade",
+    title = "BuzzFeed News Median Flesch-Kincaid Grade by Year",
+    subtitle = "Source: BuzzFeed",
+    caption = "@LarsESchonander"
+  ) 
+```
+
+```{r}
+df_scores %>%
+  drop_na() %>%
+  subset(category %in% c("USNews", "World", "Tech", "Science", "Politics")) %>%
+  group_by(category) %>%
+  summarise(median_grade = median(fk_grade)) %>%
+  arrange(-median_grade)
+```
+
+
+```{r}
+(df_scores %>%
+  drop_na() %>%
+  subset(category %in% c("USNews", "World", "Tech", "Science", "Politics")) %>%
+  ggplot(aes(category, fk_grade, fill = category)) + geom_violin() + theme_my_axios() + 
+  scale_fill_manual(values = c("USNews" = "#0095A8", "World" = "#112E51", "Tech" = "#FF7043", "Science" = "#78909C", "Politics" = "#f63449")) +
+  labs(
+    x = "Category",
+    y = "Flesch-Kincaid Score",
+    title = "BuzzFeed Flesch-Kincaid Scores by Top Five Category",
+    subtitle = "Source: BuzzFeed",
+    caption = "@LarsESchonander"
+  ) -> buzzFeed_top)
+save_chart("BuzzFeedVert", buzzFeed_top)
+```
+
+```{r}
+(df_scores %>%
+  group_by(title) %>%
+  count() %>%
+  arrange(-n) -> article_byline_count)
+```
+
+```{r}
+df_scores %>%
+  left_join(., article_byline_count, by = "title") %>%
+  rename(writers = n) -> df_scores_with_counts
+```
+
+```{r}
+df_scores_with_counts %>%
+  drop_na() %>%
+  group_by(writers) %>%
+  summarise(median_grade = median(fk_grade)) %>%
+  arrange(-writers)
+```
+
+```{r}
+df_scores_with_counts %>%
+  jsonlite::write_json(., "BuzzfeedFKScore.json")
+```
+
+```{r}
+df_scores_with_counts %>%
+  sample_n(., 25) %>%
+  jsonlite::write_json(., "BuzzFeedSample.json")
+```
+
+
+

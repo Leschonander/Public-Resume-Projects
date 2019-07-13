@@ -1,0 +1,317 @@
+<html>
+    <head>
+            <script src="https://d3js.org/d3.v5.min.js"></script>
+        <script src ="BuzzFeedSample.js"></script>
+        <link href="https://fonts.googleapis.com/css?family=Lato&display=swap" rel="stylesheet">
+    </head>
+    <style type="text/css">
+    * {
+        font-family: 'Lato', sans-serif;
+        background: #ffefe9;
+    }    
+
+    header {
+        text-align: center;
+        color: #333;
+    }
+
+    article {
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .Text {
+        margin: 0 auto;
+        width: 500px;
+    }
+
+    /* For the grid... */
+    #CircleGrid {
+        display: flex;
+        flex-wrap: wrap;
+        width: 140px;
+        margin: 0 auto;
+    }
+
+    .circle {
+        border-radius: 50%;
+        border: 1px solid #333;
+        margin: 2px;
+    }
+
+    /* For the  */
+    path.line {
+        fill: none;
+        stroke: orangered;
+        stroke-width: 2.5px;
+    }
+
+
+    </style>
+    <body>
+        <header>
+            <h1>An Attempt to Visualize Headlines</h1>
+            <h2>Using a Sample of BuzzFeed News Articles</h2>
+            <h3>Made by <a href="https://twitter.com/LarsESchonander">Lars E. Schönander</a></h3>
+
+        </header>
+
+        <article>
+            <div class="Text">
+                <p>
+                    <a href="https://pudding.cool">The Pudding</a> has a page devoted to pitch's they would like to see at some point, and I noticed
+                    their was one related to the complexity of headlines. Wanting a project to work on, I began to tackle the issue by using BuzzFeed's open API to
+                    download nearly 50,000 BuzzFeed news articles.
+                </p>
+                <p>
+                    The trouble is less the data collection at this point. With R using <i>Purr</i> and the rest of the <i>Tidyverse</i> I have found it easy to pull
+                    news articles from various API's and store them in SQLite databases, then it is the visualization. 
+                </p>
+
+                <p>
+                    Consider this sample of 25 BuzzFeed articles to be a stab at trying to figure this out. 
+                </p>
+            </div>
+            <h3>As a Grid</h3>
+            <div id="CircleGrid"></div>
+            <h4>Title: <span id="Title"></span></h4>
+
+            <div class="Text">
+                <p>
+                    Reading the website, I noticed the Pudding had a tutorial for using d3 to manipulate parts of the DOM that were not SVG objects.
+                    I had this issue a few months ago, but it turns out that classic CSS combined with sprinkling some D3 can go a long way in creating visualizations. 
+                </p>
+                <p>
+                    Not only are the circles ordered by time, for many of the categories, they have a custom fill as well. The <i>height</i> and <i>width</i>
+                    by setting the style of the circles is also set with D3 as well. 
+                </p>
+            </div>
+            <h3>As a Bee Swarm</h3>
+            <div id="BeeSwarm"></div>
+            <h4>Title: <span id="TitleBee"></span></h4>
+
+            <div class="Text">
+                <p>
+                    D3 v5's API seemed to make working with beeswarm charts a bit more tedious, but this is a solvable problem in the long run.
+                </p>
+                <p>
+                    Like before, the chart is in theory ordered by year, colored by category, and radius by score. 
+                </p>
+            </div>
+
+            <h3>Grouping by Category</h3>
+            <div id="RollUp"></div>
+
+            <div class="Text">
+                <p>One of the first charts I made, a classic usage of <i>rollup</i> to group the category data on the sample dataset.</p>
+            </div>
+
+            <h3>Across the Years</h3>
+            <div id="LineChart"></div>
+
+            <h3>Coda</h3>
+            <div class="Text">
+                <p>
+                    This is more of a test bed for a few ideas quite honestly. For starters, I need to visualize the whole dataset of around 48,000 articles,
+                    and that's just for BuzzFeed news, and not the nearly 200,000 Guardian articles I haven't touched yet. 
+                </p>
+                <p>
+                    Time to experiment with more chart types then in future iterations!
+                </p>
+            </div>
+
+            
+        </article>
+
+        <script>
+            // Turn each into a separate JavaScript file at the end...
+            const colorFilter = (category) => {
+                if(category === "World"){
+                    return "#112E51"
+                } else if(category === "USNews"){
+                    return "#0095A8"
+                } else if(category === "Tech"){
+                    return "#FF7043"
+                } else if (category === "Politics"){
+                    return "#f63449"
+                } else if (category === "Science"){
+                    return "#78909C"
+                } else {
+                    return "orangered"
+                }
+            }
+            let sortedDataset = dataset.sort((a, b) => d3.ascending(a.year, b.year))
+            
+            const CircleGrid = d3.select('#CircleGrid')
+
+            CircleGrid
+                .selectAll('.circle')
+                .data(dataset)
+                .enter()
+                .append('div')
+                .attr('class', 'circle')
+                .style('width', d => Math.round(d.fk_grade))
+                .style('height', d => Math.round(d.fk_grade))
+                .style('background-color', d => colorFilter(d.category))
+                .on('mouseover', function(d){
+                        d3.select("#Title").text(d.title)
+                    })
+                    .on("mouseout", function(d){
+                        d3.select("#Title").text("")
+                    })
+
+            // As a beeSwarm            
+            let manyBody = d3.forceManyBody().strength(2);
+            let center = d3.forceCenter().x(250).y(250);;
+                
+            let force = d3.forceSimulation()
+                .force("collide", d3.forceCollide(6))  // collision
+                .force("x", d3.forceX(d => d.year / 10).strength(5)) 
+                .force("y", d3.forceY(d => -75 + d.year / 10))  
+                .nodes(dataset)
+                .on("tick", updateNetwork);
+            
+            const beeSwarmSVG = d3.select("#BeeSwarm").append('svg')
+                .attr('width', 400)
+                .attr('height', 225)
+                .attr('class', "BeeSwarmSVG")
+
+            beeSwarmSVG
+                .selectAll("circle")
+                .data(dataset)
+                .enter()
+                .append('circle')
+                    .attr("class", "node")
+                    .style("fill", d => colorFilter(d.category))
+                    .attr("r", d => (Math.round(d.fk_grade)) / 2)
+                .on('mouseover', function(d){
+                    d3.select("#TitleBee").text(d.title)
+                })
+                .on("mouseout", function(d){
+                    d3.select("#TitleBee").text("")
+                })
+
+
+            function updateNetwork() {
+                d3.selectAll("circle")
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+            }
+
+            // As a bar chart
+
+            const xScale = d3.scaleBand().rangeRound([0, 400]).padding(0.1)
+            const yScale = d3.scaleLinear().range([300, 0]);
+
+            const BarChartSVG = d3.select("#RollUp").append("svg")
+            .attr("width", 500)
+            .attr("height", 400)
+            .append('g')
+                .attr('transform', "translate(80, 60)")
+                .attr('class', "svg")
+
+            let groupedByCategory = d3.nest()
+                .key(d => d.category)
+                .rollup(l => {
+                    return l.length
+                })
+                .entries(dataset)
+                
+            xScale.domain(groupedByCategory.map((d) => d.key))
+            yScale.domain([0, d3.max(groupedByCategory, (d) => d.value)])
+
+            const xAxis = BarChartSVG.append("g")
+                .attr('transform', `translate(0, 300)`)
+                .attr('class', 'x axis')
+                .call(d3.axisBottom(xScale)
+                    .tickSize(0, 0)
+                    .tickSizeInner(0)
+                    .tickPadding(10))
+
+            const yAxis = BarChartSVG.append("g")
+                .attr('class', 'y axis')
+                .call(d3.axisLeft(yScale)
+                    .ticks(5)
+                    .tickSizeInner(0)
+                    .tickPadding(6)
+                    .tickSize(0,0))
+                
+            BarChartSVG
+                .append("text")
+                .attr('transform', "rotate(-90)")
+                .attr('y', 0 - 60)
+                .attr('x', 0 - (300 / 2.5))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .text("Count")
+                .attr('class', 'y axis label')
+
+            BarChartSVG
+                .selectAll(".rect")
+                .data(groupedByCategory)
+                .enter()
+                .append('rect')
+                    .attr('class', 'bar')
+                    .attr('x', (d) => xScale(d.key))
+                    .attr('y', (d) => yScale(d.value))
+                    .attr('width', xScale.bandwidth())
+                    .attr('height', (d) => 300 - yScale(d.value))
+                    .attr('fill', "orangered")
+
+            // By time...
+            let groupedByYear = d3.nest()
+                .key(d => d.year)
+                .rollup(v => {
+                    return d3.mean(v, d => d.fk_grade)
+                })
+                .entries(dataset)
+
+            groupedByYear.forEach((d) => {
+                d.key = parseInt(d.key);
+                d.value = d.value; 
+            });
+            console.log(groupedByYear)
+
+            const xScaleLine = d3.scaleTime().range([0, 400]);
+            const yScaleLine = d3.scaleLinear().range([225, 0]);
+
+            const line = d3.line()
+                .x(d => xScaleLine(d.key))
+                .y(d => yScaleLine(d.value))
+
+            const LineSVG = d3.select("#LineChart").append("svg")
+                .attr("width", 500)
+                .attr('height', 275)
+                .append("g")
+                .attr('transform', `translate(50, 20)`)
+            
+
+            xScaleLine.domain(d3.extent(groupedByYear, (d) => d.key))
+            yScaleLine.domain([0, d3.max(groupedByYear, (d) => d.value)])
+
+            LineSVG.append('path')
+                .data([groupedByYear])
+                .attr('class', 'line')
+                .attr('d', line)
+            
+            LineSVG.append('g')
+                .attr('class', 'x axis')
+                .attr('transform', `translate(0,225)`)
+                .call(d3.axisBottom(xScaleLine))
+            
+            LineSVG.append('g')
+                .attr("class", "y axis")
+                .call(d3.axisLeft(yScaleLine))
+
+            LineSVG.append("text")
+                .attr('transform', "rotate(-90)")
+                .attr('y', 0 - 45)
+                .attr('x', 0 - (275 / 2.5))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .text("Mean Flesch-Kincaid Grade Level")
+                .attr('class', 'y axis label')
+
+        </script>
+    </body>
+</html>
