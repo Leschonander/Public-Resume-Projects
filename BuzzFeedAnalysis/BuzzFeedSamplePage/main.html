@@ -1,6 +1,6 @@
 <html>
     <head>
-            <script src="https://d3js.org/d3.v5.min.js"></script>
+        <script src="https://d3js.org/d3.v4.js"></script>
         <script src ="BuzzFeedSample.js"></script>
         <link href="https://fonts.googleapis.com/css?family=Lato&display=swap" rel="stylesheet">
     </head>
@@ -46,7 +46,26 @@
         stroke-width: 2.5px;
     }
 
+    /* For the legend */
+    #Legend {
+        display: flex;
+        flex-wrap: wrap;
+        flex-direction: row;
+        align-items: flex-end;
+        width: 140px;
+        margin: 0 auto;
+    }
 
+    .group {
+        display: flex;
+        flex-direction: column;
+        margin: 5px;
+    }
+
+    .block {
+        width: 20px;
+        height: 20px;
+    }
     </style>
     <body>
         <header>
@@ -71,6 +90,16 @@
                 <p>
                     Consider this sample of 25 BuzzFeed articles to be a stab at trying to figure this out. 
                 </p>
+            </div>
+            <h3>#2 A Legend!</h3>
+            <div id="Legend"></div>
+            
+            <div class="Text">
+                <p>
+                    I recently talked to a proper Graphics editor and while they liked the work, something I realized is a legend would be helpful.
+                    Beyond the color scale, the <i>FK Grade</i> for these charts determines the <i>radius</i> and/or <i>height</i> and <i>width</i> of the various visualizations.
+                </p>
+                
             </div>
             <h3>As a Grid</h3>
             <div id="CircleGrid"></div>
@@ -108,6 +137,27 @@
 
             <h3>Across the Years</h3>
             <div id="LineChart"></div>
+
+            <h3>#2 Circle Packing</h3>
+            <div id="CirclePacking"></div>
+
+            <div class="Text">
+                <p>
+                    A new option, I realized I liked the style of the beeswarm charts, but needed a way to separate the different years from each other.
+                    Also, the grey circle for the level 1 hierarchy provides a nice way to separate the elements. 
+                </p>
+            </div>
+
+            <h3>#2 Stream Graph</h3>
+            <div id="StreamChart"></div>
+            <h4>Category: <span id="StreamCategory"></span></h4>
+
+            <div class="Text">
+                <p>
+                    At the suggestion of a graphics editor at a outlet that will go unnamed, he suggested that a streamgraph would be a good way to look at this data over time.
+                    In practice, I agree, because the change over time is visible. 
+                </p>
+            </div>
 
             <h3>Coda</h3>
             <div class="Text">
@@ -271,7 +321,6 @@
                 d.value = d.value; 
             });
             console.log(groupedByYear)
-
             const xScaleLine = d3.scaleTime().range([0, 400]);
             const yScaleLine = d3.scaleLinear().range([225, 0]);
 
@@ -312,6 +361,200 @@
                 .text("Mean Flesch-Kincaid Grade Level")
                 .attr('class', 'y axis label')
 
+            // Circle Packing
+            const CirclePackingSVG = d3.select("#CirclePacking").append("svg")
+                .attr('width', 500)
+                .attr('height', 400)
+
+            let dataYears = [
+            {Year: 2014, children: []},
+            {Year: 2015, children: []},
+            {Year: 2016, children: []},
+            {Year: 2017, children: []},
+            {Year: 2018, children: []},
+            {Year: 2019, children: []},
+            ]
+                    
+            for(let i in dataset){
+                // console.log(dataset[i].year)
+                let record = dataset[i]
+            
+                if(record.year === 2014){
+                    dataYears[0].children.push(record)
+                } else if(record.year === 2015){
+                    dataYears[1].children.push(record)
+                } else if(record.year === 2016){
+                    dataYears[2].children.push(record)
+                } else if(record.year === 2017){
+                    dataYears[3].children.push(record)
+                } else if(record.year === 2018){
+                    dataYears[4].children.push(record)
+                } else if(record.year === 2019){
+                    dataYears[5].children.push(record)
+                } 
+            }
+
+            let nodeHierarchy = d3.hierarchy({
+                    children: dataYears
+                }).sum(d => d.fk_grade)
+                
+
+            let pack = d3.pack()
+                .size([250, 200])
+                .padding(3)
+
+            const root = pack.padding(7)(nodeHierarchy)
+
+            const leaf = CirclePackingSVG.selectAll("g")
+                .data(root.descendants())
+                .enter()
+                .append("g")
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+
+            const circle = leaf.append("circle")
+                .attr("r", d => {
+                    if(d.height === 1){
+                        return d.r * 1.75
+                    } else {
+                        return d.r
+                    }
+                })
+                .attr("fill", d => {
+                    if(d.height !== 0){   
+                        return "none"; 
+                    }
+                    else {
+                        return colorFilter(d.data.category)
+                    }
+                })
+                .attr('stroke', d => {
+                    if(d.height === 1){
+                        return "grey"
+                    } else {
+                        return "none"
+                    }
+                })
+            
+            const categories = root.children
+
+            CirclePackingSVG.selectAll(".categories")
+                .data(categories)
+                .enter()
+                .append("g")
+                .attr("transform", d => `translate(${d.x + 125},${d.y + 112})`)
+                /*
+                .append("text")
+                .text(d => d.data.Year)
+                    .attr("font-size", 12)
+                    .attr("font-family", "sans-serif")
+                    .attr("text-anchor", "middle");
+                */
+
+            // A Legend
+            const Legend = d3.select('#Legend')
+
+            const items = [
+                { name: 'Matt', state: "USNews" },
+                { name: 'Ilia', state: 'World' },
+                { name: 'Jan', state: 'Tech' },
+                { name: 'Caitlyn', state: 'Science' },
+                { name: 'Russell', state: 'Politics' },
+                { name: 'Amber', state: 'Other' }
+            ];
+
+            // nest the data by state
+            const nest = d3
+                .nest()
+                .key(d => d.state)
+                .entries(items);
+                console.log(nest)
+            const group = Legend
+                .selectAll('.group')
+                .data(nest)
+                .enter()
+                .append('div')
+                .attr('class', 'group');
+
+            group
+                .selectAll('.block')
+                .data(d => d.values)
+                .enter()
+                .append('div')
+                .attr('class', 'block')
+                .style('background-color', d => colorFilter(d.state))
+
+            group.append('text')
+                .text(d => d.key)
+                .style("font-size", "9px")
+                .style("font-family", "sans-serif")
+                .style("text-anchor", "middle");
+
+            // Stream chart!!
+
+            const StreamChartSVG = d3.select("#StreamChart").append("svg")
+                .attr("width", 500)
+                .attr("height", 400)
+
+            d3.csv("https://gist.githubusercontent.com/Leschonander/dc671b648ef8a1be86cf003da6cb1190/raw/bde19110e2e3b03c2b7768cd5d540730fb8ea2e0/BuzzFeedD3ActionStyle.csv", stream);
+            
+            function stream(data) {
+                const xScaleStream = d3.scaleLinear()
+                    .domain([0, 7]).range([0, 500])
+                    
+                const yScaleStream = d3.scaleLinear()
+                    .domain([0, 100]).range([500, 0]);
+
+                /*
+                StreamChartSVG.append("g")
+                    .attr("transform", "translate(0," + 500 * 0.8 + ")")
+                    .call(d3.axisBottom(xScaleStream).tickSize(-450 * .7).tickValues([1,2,3,4,5,6,7]))
+                    .select(".domain").remove()
+                */
+                const categories = ["Politics", "Tech", "USNews", "World", "Science"];
+                
+                const fillScale = d3.scaleOrdinal()
+                .domain(categories)
+                .range(["#0095A8", "#FF7043", "#f63449", "#78909C", "#de4a66"]);
+                
+                stackLayout = d3.stack()
+                    .offset(d3.stackOffsetSilhouette)
+                    .order(d3.stackOrderInsideOut)
+                    .keys(categories);
+                
+                yScaleStream.domain([-50, 50]);
+                
+                const stackArea = d3.area()
+                    .x((d, i) => xScaleStream(i))
+                    .y0(d => yScaleStream(d[0]))
+                    .y1(d => yScaleStream(d[1]));
+                
+                stackArea.curve(d3.curveBasis);
+                
+                StreamChartSVG.selectAll("path")
+                .data(stackLayout(data))
+                .enter()
+                .append("path")
+                    .style("fill", d => fillScale(d.key))
+                    .attr("d", d => stackArea(d))
+                    .attr('class', 'areaFill')
+                    .on("mouseover", function(d){
+                        d3.selectAll(".areaFill").style("opacity", .2)
+                        d3.select(this)
+                            .style("stroke", "black")
+                            .style("opacity", 1)
+                        d3.select("#StreamCategory").text(d.key)
+                    })
+                    .on('mouseout', function(d){
+                        d3.selectAll(".areaFill")
+                            .style("opacity", 1)
+                            .style("stroke", "none")
+                        d3.select("#StreamCategory").text("")
+                    })
+            
+            }
+             
+
+                
         </script>
     </body>
 </html>
